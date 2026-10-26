@@ -248,6 +248,20 @@ footer{background:#f8f6f7;color:#77717a}
      total: price + delivery
    };
 
+   // Duplicate guard: blocks repeat submissions using the same phone number in this browser.
+   // This does not affect the TikTok Pixel code or the existing Google Sheets endpoint.
+   const normalizedPhone = payload.phone.replace(/\\D/g, '');
+   const duplicateKey = 'waistShaperSubmittedPhones';
+   let previousPhones = [];
+   try { previousPhones = JSON.parse(localStorage.getItem(duplicateKey) || '[]'); } catch (_) {}
+   if (previousPhones.includes(normalizedPhone)) {
+     const duplicateNotice = document.getElementById('notice');
+     duplicateNotice.style.display = 'block';
+     duplicateNotice.style.color = '#b00020';
+     duplicateNotice.textContent = 'Is mobile number se is browser par pehle order submit ho chuka hai. Agar aapko order update karna hai to support se rabta karein.';
+     return;
+   }
+
    const notice = document.getElementById('notice');
    const submitButton = this.querySelector('button[type="submit"]');
    const originalText = submitButton.textContent;
@@ -269,6 +283,13 @@ footer{background:#f8f6f7;color:#77717a}
        });
      }
    }
+
+   // Remember this phone in this browser to reduce accidental repeat orders.
+   // Server-side duplicate checks are required to block orders from other devices.
+   try {
+     previousPhones.push(normalizedPhone);
+     localStorage.setItem(duplicateKey, JSON.stringify([...new Set(previousPhones)]));
+   } catch (_) {}
 
    // Show Thank You page immediately; send the Sheet request in the background.
    fetch(SHEET_ENDPOINT, {
